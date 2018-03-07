@@ -14,6 +14,10 @@
         <%= f.label :rating %>
         <%= f.select :rating, Movie::RATINGS, prompt: "Pick one" %>
       </li>
+      <li>
+        <%= f.collection_check_boxes(:genre_ids, Genre.all, :id, :name) %>
+      </li>
+
       <li class="required">
         <%= f.label :released_on %>
         <%= f.date_select :released_on %>

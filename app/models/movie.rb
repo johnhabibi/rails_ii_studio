@@ -1,6 +1,8 @@
 class Movie < ApplicationRecord
-  validates :title, :released_on, :duration, presence: true
-
+  before_validation :generate_slug
+  
+  validates :title, presence: true, uniqueness: true
+  validates :slug, uniqueness: true
   validates :description, length: { minimum: 25 }
 
   validates :total_gross, numericality: { greater_than_or_equal_to: 0 }
@@ -16,17 +18,23 @@ class Movie < ApplicationRecord
 
   has_many :reviews, dependent: :destroy
 
-  def self.released
-    where("released_on <= ?", Time.now).order("released_on desc")
-  end
+  has_many :favorites, dependent: :destroy
+  has_many :fans, through: :favorites, source: :user
 
-  def self.hits
-    where('total_gross >= 300000000').order(total_gross: :desc)
-  end
+  has_many :characterizations, dependent: :destroy
+  has_many :genres, through: :characterizations
 
-  def self.flops
-    where('total_gross < 50000000').order(total_gross: :asc)
-  end
+  scope :released, -> { where('released_on <= ?', Time.now).order(released_on: :desc) }
+
+  scope :hits, -> { released.where('total_gross >= 300000000').order(total_gross: :desc) }
+
+  scope :flops, -> { released.where('total_gross < 50000000').order(total_gross: :asc) }
+
+  scope :upcoming, -> { where('released_on > ?', Time.now).order(released_on: :asc) }
+
+  scope :rated, ->(rating) { released.where(rating: rating) }
+
+  scope :recent, ->(max=5) { released.limit(max) }
 
   def self.recently_added
     order('created_at desc').limit(3)
@@ -39,8 +47,16 @@ class Movie < ApplicationRecord
   def average_stars
     reviews.average(:stars)
   end
-  
+
   def recent_reviews
     reviews.order('created_at desc').limit(2)
+  end
+
+  def to_param
+    slug
+  end
+
+  def generate_slug
+    self.slug ||= title.parameterize if title
   end
 end
